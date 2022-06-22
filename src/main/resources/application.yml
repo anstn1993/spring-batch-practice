@@ -28,4 +28,6 @@ spring:
   batch:
     jdbc:
       initialize-schema: never
+    job:
+      enabled: false # 스프링 부트에 의해 job이 자동실행되지 않게 방지(JobLauncherApplicationRunner 빈 생성 방지)
 
