@@ -1,9 +1,14 @@
 # spring-batch-practice
+---
 스프링 배치 학습 repository
+<br>
 스프링 배치의 모든 기본 내용을 다 담는 저장소는 아니고(담을 수도 없고..ㅎㅎ), 내부적인 동작 방식과 같은 부가적으로 살펴보고 기록할 필요가 있는 내용들을 위주로 채운다.
 
 ## 스프링 배치 초기 실행
-스프링 부트기반의 스프링 배치는 ApplicationRunner의 구현체인 JobLauncherApplicationRunner에 의해서 프로그램이 시작됨과 동시에 빈으로 등록된 모든 job을 실행시킨다.(`spring.batch.job.enabled=true`라는 기본설정 하에) JobLauncherApplicationRunner는 BatchAutoConfiguration 설정 클래스에서 빈으로 등록된다. 아래의 코드를 보자.
+---
+스프링 부트기반의 스프링 배치는 ApplicationRunner의 구현체인 JobLauncherApplicationRunner에 의해서 프로그램이 시작됨과 동시에 빈으로 등록된 모든 job을 실행시킨다.(`spring.batch.job.enabled=true`라는 기본설정 하에) 
+<br>
+JobLauncherApplicationRunner는 BatchAutoConfiguration 설정 클래스에서 빈으로 등록된다. 아래의 코드를 보자.
 ```java
 @AutoConfiguration(
   after = {HibernateJpaAutoConfiguration.class}
@@ -37,6 +42,7 @@ public class BatchAutoConfiguration {
 }
 ```
 JobLauncherApplicationRunner가 빈으로 등록되는데 annotation을 보면 `spring.batch.job.enabled`설정의 값이 true일 때만 빈으로 등록이 된다. 즉 application.properties(or yml)에서 저 설정을 false로 지정하면 이 JobLauncherApplicationRunner가 빈으로 등록되지 않고 job은 실행되지 않는다.
+<br>
 runner가 job을 어떻게 실행하는지 알아보려면 위 코드에서 `runner.setJobNames(jobNames)`를 보면 된다. jobNames는 BatchProperties로부터 가져오게 된다.
 
 ```java
@@ -64,6 +70,7 @@ public class BatchProperties {
 }
 ```
 BatchProperties는 크게 job, jdbc라는 멤버를 가지게 되고 job은 names를 jdbc는 isolationLevelForCreate, schema, platform, tablePrefix, initializeSchema를 멤버로 가진다. 
+<br>
 각각의 프로퍼티는 spring.batch.job, spring.batch.jdbc의 하위에 지정해줄 수 있다. 그 중에서도 우린 지금 jobNames를 보고 있었으니 거기에 다시 집중하면 결국 BatchProperties의 멤버인 job의 멤버인 names로부터 꺼내오게 되는 것이다.
 ```yaml
 spring:
@@ -110,6 +117,7 @@ public class JobLauncherApplicationRunner implements ApplicationRunner, Ordered,
 빈으로 등록된 job들을 컬렉션으로 주입받고 반복자를 이용하여 하나씩 순회하면서 실행하게 된다. 이때 jobNames가 빈 문자열이 아니라면 jobNames에 기재된 이름의 job만 실행을 하고 나머지는 무시하게 된다. jobNames를 따로 지정하지 않은 상태라면 모든 job이 실행된다.
 
 ## Job의 생성과정
+---
 JobBuilderFactory에서 시작하여 Job이 생성되는 과정을 탐험하고, 최종적으로 Job이 지닌 속성들이 어떻게 세팅되는지 살펴보자.
 ```java
 @Bean
@@ -152,7 +160,7 @@ public class JobBuilder extends JobBuilderHelper<JobBuilder> {
 }
 ```
 JobBuilder.start()메서드의 인자로 Step이 전달되면 SimpleJobBuilder를, Flow를 전달하면 JobFlowBuilder를 반환하게 된다. flow()메서드를 호출해도 JobFlowBuilder를 반환하게 되는데, 여기서 중요한 건 JobBuilder가 구체적으로 생성해야할 대상체의 Builder를 라우팅해서 반환해준다는 것이다. 위의 코드에서는 start() 메서드에 Step을 전달하기 때문에 최종적으로 Job의 구현체 중에서 SimpleJob을 생성하는 빌더인 SimpleJobBuilder를 반환하게 된다. 
-
+<br>
 JobBuilder, SimpleJobBuilder, JobFlowBuilder모두 JobBuilderHelper라는 추상 클래스를 상속받고 있는데, 헬퍼라는 이름에 걸맞게 Job의 생성에 필요한 여러 공통적인 api를 제공하고 있다. 즉, Job의 타입을 막론하고 공통적으로 필요한 api는 JobBuilderHelper에 정의해두고 이를 상속받는 Builder들은 자신들에게 필요한 기능들을 추가 구현한 형태를 가진다. 위에서 본 JobBuilderFactory로 Job을 생성하는 코드에서 validator(), preventRestart(), incrementer(), listener()는 모두 JobBuilderHelper에 정의된 메서드들이다. 그리고 JobBuilderHelper클래스는 자신의 내부 클래스인 CommonJobProperties를 속성으로 가지고 있는데, 이 클래스는 위에 나열된 api들을 통해 Job의 속성을 선행적으로 보관하다가 실제로 SimpleJob을 build하는 순간에 SimpleJob으로 속성을 전달해주는 역할을 수행한다. 말로하니 역시 어렵다. 코드를 보자.
 ```java
 public abstract class JobBuilderHelper<B extends JobBuilderHelper<B>> {
